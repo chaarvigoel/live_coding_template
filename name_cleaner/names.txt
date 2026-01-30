@@ -1,0 +1,29 @@
+alice
+  bob
+carol
+CAROL
+  dave  
+eve
+alice
+frank
+123
+grace
+@henry
+  IVY  
+james
+james
+kate
+!!!
+  LISA
+mike
+42
+nancy
+olivia
+  OLIVIA
+paul
+$
+quinn
+  rachel  
+rachel
+sam
+%
