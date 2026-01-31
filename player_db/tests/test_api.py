@@ -8,6 +8,27 @@ from main import app  # pyright: ignore[reportMissingImports]
 
 client = TestClient(app)
 
+def test_post_player_creates_and_returns_player():
+    r = client.post(
+        "/v1/players",
+        json={"firstName": "Dave", "lastName": "Davis", "weight": 75, "height": 180},
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert data["firstName"] == "Dave"
+    assert data["lastName"] == "Davis"
+
+
+def test_post_player_appears_in_list():
+    client.post(
+        "/v1/players",
+        json={"firstName": "Eve", "lastName": "Evans", "weight": 60, "height": 165},
+    )
+    r = client.get("/v1/players", params={"isAdmin": "true"})
+    assert r.status_code == 200
+    names = [p["firstName"] for p in r.json()["players"]]
+    assert "Eve" in names
+
 
 def test_player_admin_true():
     r = client.get("/v1/players", params={"isAdmin":"true"})

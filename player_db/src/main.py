@@ -23,12 +23,10 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # --- Player models ---
 class CreatePlayerBody(BaseModel):
-    """Request body for POST /v1/players."""
 
     firstName: str
     lastName: str
-    weight: int = Field(ge=1, le=500)
-    height: int = Field(ge=1, le=300)
+
 
 
 class Player(BaseModel):
@@ -47,9 +45,21 @@ PLAYERS: list[dict[str, str]] = [
 
 def add_player(firstName: str, lastName: str):
     new_player = Player(firstName=firstName, lastName=lastName)
+    if not firstName:
+        logger.warning("Invalid First Name")
+        raise HTTPException(status_code=400, detail="Input a valid first name")
+    if not lastName:
+        logger.warning("Invalid Last Name")
+        raise HTTPException(status_code=400, detail="Input a valid last name")
     PLAYERS.append(new_player.model_dump())
+    return new_player.model_dump()
 
-    
+
+@app.post("/v1/players", status_code=201)
+def post_player(body: CreatePlayerBody):
+    player = add_player(body.firstName, body.lastName)
+    return player
+
 
 
 @app.get("/v1/players")
