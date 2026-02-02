@@ -7,9 +7,9 @@ from main import app  # pyright: ignore[reportMissingImports]
 
 client = TestClient(app)
 _SEED = [
-    {"id": 1, "reporter": {"firstName": "Alice", "lastName": "Anderson", "email": "alice@example.com"}},
-    {"id": 2, "reporter": {"firstName": "Bob", "lastName": "Brown", "email": "bob@corp.com"}},
-    {"id": 3, "reporter": {"firstName": "Carol", "lastName": "Clark", "email": "carol@acme.org"}},
+    {"id": 1, "reporter": {"firstName": "Alice", "lastName": "Anderson", "email": "alice@example.com"}, "status": "open", "severity": "medium"},
+    {"id": 2, "reporter": {"firstName": "Bob", "lastName": "Brown", "email": "bob@corp.com"}, "status": "open", "severity": "low"},
+    {"id": 3, "reporter": {"firstName": "Carol", "lastName": "Clark", "email": "carol@acme.org"}, "status": "open", "severity": "high"},
 ]
 
 
@@ -134,3 +134,60 @@ def test_create_extra_fields_ignored():
     )
     assert r.status_code == 201
     assert "extraField" not in r.json()
+
+
+# --- Part 3: Update status ---
+
+
+def test_patch_status_updates():
+    r = client.patch("/v1/incidents/1", json={"status": "resolved"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "resolved"
+
+
+def test_patch_status_verifiable_via_get():
+    client.patch("/v1/incidents/1", json={"status": "triaged"})
+    r = client.get("/v1/incidents", params={"includePII": "true"})
+    incident_1 = next(i for i in r.json()["incidents"] if i["id"] == 1)
+    assert incident_1["status"] == "triaged"
+
+
+def test_patch_invalid_status_returns_400():
+    r = client.patch("/v1/incidents/1", json={"status": "closed"})
+    assert r.status_code == 400
+
+
+def test_patch_incident_not_found_returns_404():
+    r = client.patch("/v1/incidents/999", json={"status": "resolved"})
+    assert r.status_code == 404
+
+
+# --- Part 4: Filter by severity ---
+
+
+def test_filter_by_severity():
+    r = client.get("/v1/incidents", params={"includePII": "true", "severity": "low"})
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data["incidents"]) == 1
+    assert data["incidents"][0]["severity"] == "low"
+    assert data["incidents"][0]["reporter"]["firstName"] == "Bob"
+
+
+def test_filter_severity_with_include_pii_false():
+    r = client.get("/v1/incidents", params={"includePII": "false", "severity": "high"})
+    assert r.status_code == 200
+    assert len(r.json()["incidents"]) == 1
+    assert r.json()["incidents"][0]["reporter"] == {"firstName": "Carol"}
+    assert r.json()["incidents"][0]["severity"] == "high"
+
+
+def test_filter_invalid_severity_returns_400():
+    r = client.get("/v1/incidents", params={"includePII": "true", "severity": "closed"})
+    assert r.status_code == 400
+
+
+def test_filter_severity_empty_result():
+    r = client.get("/v1/incidents", params={"includePII": "true", "severity": "critical"})
+    assert r.status_code == 200
+    assert r.json()["incidents"] == []
